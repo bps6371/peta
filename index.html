@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Wilayah</title>
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet.markercluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+    <!-- <script src="data_peta.js"></script> -->
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .header h2 {
+            font-size: 1.2em;
+            line-height: 1.4;
+        }
+
+        .filter-group {
+            margin-bottom: 20px;
+        }
+
+        .filter-group label {
+            display: block;
+            color: #e67e22;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .filter-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95em;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: #2ecc71;
+        }
+
+        .filter-group select:hover {
+            border-color: #bbb;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+
+        .toggle-sidebar {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            z-index: 1001;
+            background: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-size: 1.2em;
+            display: none;
+        }
+
+        .info-box {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        .info-box h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: 0;
+                top: 0;
+                height: 100%;
+                width: 280px;
+            }
+
+            .sidebar.hidden {
+                transform: translateX(-100%);
+            }
+
+            .toggle-sidebar {
+                display: block;
+            }
+
+            .toggle-sidebar.sidebar-open {
+                left: 300px;
+            }
+
+            .header h2 {
+                font-size: 1.1em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sidebar {
+                width: 250px;
+            }
+
+            .toggle-sidebar.sidebar-open {
+                left: 270px;
+            }
+
+            .header h2 {
+                font-size: 1em;
+            }
+
+            .filter-group label {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="toggle-sidebar" onclick="toggleSidebar()">☰</button>
+        
+        <div class="sidebar" id="sidebar">
+            <div class="header">
+                <h2>Cari Data Berdasarkan Wilayah</h2>
+            </div>
+
+            <div class="filter-group">
+                <label>Kecamatan</label>
+                <select id="kecamatan">
+                    <option value="">Banjarmasin Selatan</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Kelurahan/Desa</label>
+                <select id="kelurahan">
+                    <option value="">Kelayan Barat</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>RT</label>
+                <select id="rt">
+                    <option value="">- Semua -</option>
+                    <option value="RT 1">RT 001</option>
+                    <option value="RT 6">RT 006</option>
+                    <option value="RT 7">RT 007</option>
+                    <!-- tambahkan sesuai data -->
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="applyFilter()">Terapkan</button>
+                <button class="btn btn-secondary" onclick="resetFilter()">Reset</button>
+            </div>
+
+            <div class="info-box">
+                <h3>Informasi</h3>
+                <p>Pilih filter di atas untuk melihat data wilayah tertentu di peta.</p>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script> -->
+    <script>
+        const map = L.map('map').setView([-3.319437, 114.590111], 12);
+
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 23,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps'
+        }).addTo(map);
+
+        let allFeatures = [];     // simpan semua data asli dari Spreadsheet
+        let markerCluster;        // layer cluster global
+
+        async function loadSpreadsheetData() {
+            const url = "https://script.google.com/macros/s/AKfycbwnRZHLhdkcqWGQswx8QgLbcQBWQxng_QT91bFXC2yLEQ7PBCWeDtM4yG_tGHRrsTpKPw/exec";
+            const response = await fetch(url);
+            const geojson = await response.json();
+            allFeatures = geojson.features; // simpan semua feature
+            tampilkanData(allFeatures);
+        }
+
+        // Fungsi menampilkan data ke peta
+        function tampilkanData(features) {
+            if (markerCluster) map.removeLayer(markerCluster);
+
+            const geojsonLayer = L.geoJSON({ type: "FeatureCollection", features: features }, {
+                pointToLayer: function (feature, latlng) {
+                    const marker = L.circleMarker(latlng, {
+                        radius: 8,
+                        fillColor: '#6b2c91',
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
+                    marker.featureName = feature.properties.nama_usaha;
+                    return marker;
+                },
+                onEachFeature: function (feature, layer) {
+                    const prop = feature.properties;
+                    layer.bindPopup(`
+                        <b>Nama Usaha: ${prop.nama_usaha}</b><br>
+                        Nama Pengusaha: ${prop.nama_pengusaha}<br>
+                        Alamat: ${prop.alamat}<br>
+                        RT: ${prop.rt}<br>
+                        Produk utama yang dihasilkan: ${prop.produk_utama}<br>
+                        Kode Kategori Usaha: ${prop.kode_kategori}<br>
+                        
+                    `);
+                }
+            });
+
+            markerCluster = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                maxClusterRadius: 60,
+                disableClusteringAtZoom: 19,
+                iconCreateFunction: function (cluster) {
+                    return L.divIcon({
+                        html: `<div style="background:#6b2c91;color:white;font-weight:bold;border-radius:50%;width:40px;height:40px;line-height:40px;text-align:center;">
+                                ${cluster.getChildCount()}
+                            </div>`,
+                        className: 'cluster-icon',
+                        iconSize: [40, 40]
+                    });
+                }
+            });
+
+            markerCluster.addLayer(geojsonLayer);
+            map.addLayer(markerCluster);
+            updateLabels();
+
+            map.on('zoomend', updateLabels);
+            markerCluster.on('animationend', updateLabels);
+        }
+
+        // Label muncul hanya ketika tidak cluster
+        function updateLabels() {
+            document.querySelectorAll('.leaflet-marker-icon.label').forEach(el => el.remove());
+
+            markerCluster.eachLayer(layer => {
+                if (layer instanceof L.CircleMarker && map.hasLayer(layer)) {
+                    const latlng = layer.getLatLng();
+                    const label = L.divIcon({
+                        html: `<div style="color:#2c3e50;font-weight:bold;font-size:12px;white-space:nowrap;">${layer.featureName}</div>`,
+                        className: 'label',
+                        iconAnchor: [-5, 20]
+                    });
+                    L.marker(latlng, { icon: label, interactive: false }).addTo(map);
+                }
+            });
+        }
+
+        // ==================== FILTER ==================== //
+        function applyFilter() {
+            // const kecamatan = document.getElementById('kecamatan').value.toLowerCase();
+            // const kelurahan = document.getElementById('kelurahan').value.toLowerCase();
+            // const sls = document.getElementById('sls').value.toLowerCase();
+            const rt = document.getElementById('rt').value.toLowerCase();
+
+            const filtered = allFeatures.filter(f => {
+                const p = f.properties;
+                // console.log(rt);
+                // console.log(p.rt);
+                // const matchKec = !kecamatan || (p.kecamatan && p.kecamatan.toLowerCase() === kecamatan);
+                // const matchKel = !kelurahan || (p.kelurahan && p.kelurahan.toLowerCase() === kelurahan);
+                // const matchSls = !sls || (p.sls && p.sls.toLowerCase() === sls);
+                const matchRt = !rt || (p.rt.toLowerCase() === rt);
+                return matchRt;
+            });
+
+            tampilkanData(filtered);
+        }
+
+        function resetFilter() {
+            // document.getElementById('kecamatan').value = '';
+            // document.getElementById('kelurahan').value = '';
+            // document.getElementById('sls').value = '';
+            document.getElementById('rt').value = '';
+            tampilkanData(allFeatures);
+            map.setView([-3.319437, 114.590111], 12);
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.querySelector('.toggle-sidebar');
+            sidebar.classList.toggle('hidden');
+            toggleBtn.classList.toggle('sidebar-open');
+        }
+
+        // Jalankan saat halaman load
+        loadSpreadsheetData();
+
+        // Auto-hide sidebar di mobile
+        if (window.innerWidth <= 768) {
+            document.getElementById('sidebar').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
