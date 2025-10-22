@@ -261,11 +261,26 @@
     <script>
         const map = L.map('map').setView([-3.319437, 114.590111], 12);
 
-        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-            maxZoom: 23,
+        var googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
             attribution: '&copy; Google Maps'
         }).addTo(map);
+
+        // Google Maps Satellite tiles
+        var googleSat = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps'
+        });
+
+        // Add layer control
+        var baseMaps = {
+            "Google Streets": googleStreets,
+            "Google Satellite": googleSat
+        };
+
+        L.control.layers(baseMaps).addTo(map);
 
         let allFeatures = [];     // simpan semua data asli dari Spreadsheet
         let markerCluster;        // layer cluster global
